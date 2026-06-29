@@ -21,24 +21,27 @@ namespace ProductosApp.Api.Controllers
 
         // -----------------------------------------------
         // GET /api/productos/reporte
-        // Genera PDF con listado de productos activos. Usuarios autenticados (Admin y Usuario).
-        // Si se especifica `ruta`, también guarda el PDF en disco en esa ubicación.
+        // Genera PDF con el listado de productos que cumplan los filtros.
+        // No aplica paginación: devuelve todas las coincidencias del filtro.
         // -----------------------------------------------
         [HttpGet("reporte")]
         [Authorize(Roles = "Admin,Usuario")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetReporte()
+        public async Task<IActionResult> GetReporte(
+            [FromQuery] string? search,
+            [FromQuery] bool? estado)
         {
-            var productos = await _context.Productos
-                .Where(p => p.Estado == true)
+            var query = ApplyFilters(_context.Productos.AsQueryable(), search, estado);
+
+            var productos = await query
                 .OrderBy(p => p.Nombre)
                 .ToListAsync();
 
             var doc = new ProductosApp.Api.Reports.ProductosReportDocument(productos);
             var pdfBytes = doc.GeneratePdf();
 
-            return File(pdfBytes, "application/pdf", "productos_activos.pdf");
+            return File(pdfBytes, "application/pdf", "productos_filtrados.pdf");
         }
 
         // -----------------------------------------------
@@ -62,25 +65,7 @@ namespace ProductosApp.Api.Controllers
             if (pageSize < 1) pageSize = 10;
             if (pageSize > 100) pageSize = 100;
 
-            var query = _context.Productos.AsQueryable();
-
-            query = estado.HasValue
-                ? query.Where(p => p.Estado == estado.Value)
-                : query.Where(p => p.Estado == true);
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var searchText = search.Trim();
-
-                if (Guid.TryParse(searchText, out var productoId))
-                {
-                    query = query.Where(p => p.Id == productoId);
-                }
-                else
-                {
-                    query = query.Where(p => p.Nombre.Contains(searchText));
-                }
-            }
+            var query = ApplyFilters(_context.Productos.AsQueryable(), search, estado);
 
             var total = await query.CountAsync();
 
@@ -109,6 +94,32 @@ namespace ProductosApp.Api.Controllers
             };
 
             return Ok(resultado);
+        }
+
+        private static IQueryable<Models.Producto> ApplyFilters(
+            IQueryable<Models.Producto> query,
+            string? search,
+            bool? estado)
+        {
+            query = estado.HasValue
+                ? query.Where(p => p.Estado == estado.Value)
+                : query.Where(p => p.Estado == true);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchText = search.Trim();
+
+                if (Guid.TryParse(searchText, out var productoId))
+                {
+                    query = query.Where(p => p.Id == productoId);
+                }
+                else
+                {
+                    query = query.Where(p => p.Nombre.Contains(searchText));
+                }
+            }
+
+            return query;
         }
 
         // -----------------------------------------------

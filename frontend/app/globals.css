@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8f9ff;
+  --foreground: #121c2a;
+}
+
+@theme {
+  /* Colors */
+  --color-primary: #004ac6;
+  --color-on-primary: #ffffff;
+  --color-surface-tint: #0053db;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container: #e6eeff;
+  --color-surface-container-high: #dee9fc;
+  --color-surface-container-highest: #d9e3f6;
+  --color-outline-variant: #c3c6d7;
+  --color-on-surface: #121c2a;
+  --color-on-surface-variant: #434655;
+  --color-error: #ba1a1a;
+  --color-primary-container: #2563eb;
+  --color-outline: #737686;
+
+  /* Custom Spacings */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+  --spacing-margin-desktop: 32px;
+  --spacing-margin-mobile: 16px;
+
+  /* Typography Scale */
+  --font-inter: "Inter", sans-serif;
+  --font-code: "JetBrains Mono", monospace;
+
+  --font-size-body-sm: 12px;
+  --font-size-body-md: 14px;
+  --font-size-body-lg: 16px;
+  --font-size-label-sm: 12px;
+  --font-size-label-md: 14px;
+  --font-size-headline-sm: 16px;
+  --font-size-headline-md: 20px;
+  --font-size-headline-lg: 30px;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter);
+  -webkit-font-smoothing: antialiased;
+}

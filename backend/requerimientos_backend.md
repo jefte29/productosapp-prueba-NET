@@ -109,15 +109,23 @@ Prueba Técnica: Desarrollador React & .NET 8
   - Lógica: búsqueda por email (case-insensitive), validación de cuenta activa, `BCrypt.Verify()`, generación de JWT con mismo esquema de claims.
   - Errores manejados: `400` (datos inválidos), `401` (credenciales incorrectas o cuenta inactiva).
   - **Estado**: ✅ **VALIDADO en Postman** — todos los casos responden correctamente.
+- **`GET /api/productos`** ✅ implementado:
+  - Archivo: `backend/src/ProductosApp.Api/Controllers/ProductosController.cs`
+  - Parámetros: `search`, `estado`, `page`, `pageSize`.
+  - Comportamiento: búsqueda por nombre o por GUID del producto; aplica filtro por estado y devuelve resultados paginados.
+- **`GET /api/productos/reporte`** ✅ implementado:
+  - Archivo: `backend/src/ProductosApp.Api/Controllers/ProductosController.cs`
+  - Parámetros: `search`, `estado`.
+  - Comportamiento: comparte la misma lógica de filtros que el listado, pero sin paginación y generando PDF con todas las coincidencias.
 
 ### Falta por hacer
 1. Crear controladores y endpoints de productos:
-  - ✅ `GET /api/productos` (con filtros y paginación)
+  - ✅ `GET /api/productos` (con filtros `search`, `estado`, paginación `page`/`pageSize`)
   - ✅ `GET /api/productos/{id}`
   - ✅ `POST /api/productos`
   - ✅ `PUT /api/productos/{id}` (solo Admin)
   - ✅ `DELETE /api/productos/{id}` (solo Admin, borrado lógico)
-  - `GET /api/productos/reporte` (PDF con QuestPDF)
+  - ✅ `GET /api/productos/reporte` (PDF con QuestPDF y filtros compartidos sin paginación)
 
 2. Implementar la generación de PDF con QuestPDF.
 
@@ -322,8 +330,8 @@ Authorization: Bearer {token}
 ### 🧪 TEST-09 — `GET /api/productos` (listar productos con filtros y paginación)
 
 **Request:**
-```json
-GET http://localhost:5033/api/productos?nombre=cámara&pagina=1&tamano=10
+```http
+GET http://localhost:5033/api/productos?page=1&pageSize=10&search=cámara&estado=true
 Authorization: Bearer {token}
 ```
 
@@ -347,6 +355,23 @@ Authorization: Bearer {token}
   ]
 }
 ```
+- ✅ `401 Unauthorized` si el token es inválido o falta.
+- ✅ Si `search` es un GUID válido, el filtro se aplica por `id`.
+
+---
+
+### 🧪 TEST-09B — `GET /api/productos/reporte` (generar PDF con los filtros aplicados)
+
+**Request:**
+```http
+GET http://localhost:5033/api/productos/reporte?search=cámara&estado=true
+Authorization: Bearer {token}
+```
+
+**Validaciones esperadas:**
+- ✅ `200 OK` con `Content-Type: application/pdf`.
+- ✅ Devuelve todos los productos que coinciden con los filtros, sin paginación.
+- ✅ Si se omite `estado`, se muestran únicamente los productos activos por defecto.
 - ✅ `401 Unauthorized` si el token es inválido o falta.
 
 ---
