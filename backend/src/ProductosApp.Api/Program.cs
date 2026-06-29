@@ -4,8 +4,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ProductosApp.Api.Data;
+using QuestPDF;
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configurar licencia de QuestPDF para generación de documentos en tiempo de ejecución
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Evaluation;
 
 // 1. Agregar soporte para Controladores
 builder.Services.AddControllers();
@@ -37,7 +42,18 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         ClockSkew = TimeSpan.Zero // Elimina la tolerancia por defecto de 5 min para la expiración de tokens
     };
-});
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Cookies["token"];
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+            return Task.CompletedTask;
+        }
+    };});
 
 // 4. Configurar Swagger con soporte para Tokens JWT (Bearer) - Uso de global:: para evitar colisiones
 builder.Services.AddEndpointsApiExplorer();
