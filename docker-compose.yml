@@ -1,0 +1,66 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: productosapp-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Admin2026}
+      MSSQL_PID: "Express"
+    ports:
+      - "${SQLSERVER_PORT:-1433}:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD:-Admin2026}\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - productosapp-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: productosapp-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5033
+      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=ProductosAppDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-Admin2026};TrustServerCertificate=True;
+      Jwt__Key: ${JWT_KEY:-ClaveSuperSecretaDeMasDe32CaracteresCambiarEnProduccion2026!}
+      Jwt__Issuer: ${JWT_ISSUER:-ProductosApp}
+      Jwt__Audience: ${JWT_AUDIENCE:-ProductosAppClient}
+    ports:
+      - "${BACKEND_PORT:-5033}:5033"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - productosapp-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5033}
+    container_name: productosapp-web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5033}
+      PORT: 3000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    networks:
+      - productosapp-net
+
+networks:
+  productosapp-net:
+    driver: bridge
+
+volumes:
+  sqlserver_data:

@@ -7,7 +7,7 @@ interface FooterProps {
 
 export function Footer({
   className = "",
-  text = `© ${new Date().getFullYear()} Gestión de Productos Inc. Todos los derechos reservados.`,
+  text = `© ${new Date().getFullYear()} Gestión de Productos Inc. Todos los derechos reservados. PRUEBA TÉCNICA-1.`,
 }: FooterProps) {
   return (
     <footer

@@ -14,5 +14,8 @@ namespace ProductosApp.Api.DTOs.Productos
         [Required]
         [Range(0.01, 1000000)]
         public decimal Precio { get; set; }
+
+        [RegularExpression("^(Activo|Inactivo)$", ErrorMessage = "Estado debe ser 'Activo' o 'Inactivo'.")]
+        public string? Estado { get; set; }
     }
 }

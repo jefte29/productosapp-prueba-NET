@@ -1,11 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { Logo } from "../../components/ui/Logo";
 import { Footer } from "../../components/ui/Footer";
+import { authService } from "../../services/authService";
+import { useAuth } from "@/hooks/useAuth";
+//const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5033";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,23 +36,81 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/inventario");
+    }
+  }, [loading, user, router]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface text-center">
+        <p className="font-body-md text-body-md text-on-surface">Cargando sesión...</p>
+      </div>
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
     setIsLoading(true);
     setSuccessMessage("");
+    setErrors({});
 
-    // Simulate login API call
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setSuccessMessage("¡Inicio de sesión exitoso! Redirigiendo...");
-    } catch (err) {
-      setErrors({ email: "Error al iniciar sesión. Inténtalo de nuevo." });
-    } finally {
-      setIsLoading(false);
+ try {
+
+  const data = await authService.login({
+    email,
+    password,
+  });
+
+  setSuccessMessage(`¡Bienvenido ${data.nombre}! Redirigiendo...`);
+
+  window.location.href = "/inventario";
+
+}
+catch (error) {
+
+  if (error instanceof Response) {
+
+    const errorData = await error.json().catch(() => null);
+
+    if (error.status === 401) {
+      setErrors({
+        email: errorData?.message ?? "Credenciales inválidas.",
+      });
     }
-  };
+    else if (error.status === 400) {
+      setErrors({
+        email: errorData?.message ?? "Solicitud inválida.",
+      });
+    }
+    else {
+      setErrors({
+        email:
+          errorData?.message ??
+          "Error al iniciar sesión. Inténtalo de nuevo.",
+      });
+    }
+
+    return;
+  }
+
+  setErrors({
+    email: "Error de conexión. Inténtalo de nuevo más tarde.",
+  });
+
+}
+finally {
+
+  setIsLoading(false);
+
+}
+}
   const mailIcon = (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -164,18 +228,18 @@ export default function LoginPage() {
           <div className="mt-lg pt-lg border-t border-outline-variant w-full text-center">
             <p className="font-body-sm text-body-sm text-on-surface-variant">
               ¿No tienes cuenta?{" "}
-              <a
-                href="#"
+              <Link
+                href="/register?from=login"
                 className="font-label-md text-label-md text-primary hover:underline ml-xs font-semibold"
               >
                 Regístrate
-              </a>
+              </Link>
             </p>
           </div>
         </Card>
         </div>
       </main>
-      <Footer text="© 2025 Gestión de Productos Inc. Todos los derechos reservados - Prueba Técnica 1." />
+      <Footer />
     </div>
   );
 }

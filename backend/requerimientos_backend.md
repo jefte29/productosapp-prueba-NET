@@ -100,7 +100,7 @@ Prueba Técnica: Desarrollador React & .NET 8
 - SQL Server en Docker Compose.
 - **`POST /api/auth/register`** ✅ implementado:
   - Archivo: `backend/src/ProductosApp.Api/Controllers/AuthController.cs`
-  - DTOs: `RegisterRequest.cs`, `AuthResponse.cs` (incluye campo `Nombre`)
+  - DTOs: `RegisterRequest.cs`, `AuthResponse.cs` (incluye campo `Nombre`)//reemplazado por LoginResponse.cs y CurrentResponse.cs
   - Errores manejados: `400` (datos inválidos), `409` (email duplicado), `500` (rol no configurado).
   - **Estado**: ✅ **VALIDADO en Postman** — todos los casos de error responden correctamente.
 - **`POST /api/auth/login`** ✅ implementado:

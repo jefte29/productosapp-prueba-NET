@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { Footer } from "../../components/ui/Footer";
 import { Logo } from "../../components/ui/Logo";
+import { authService } from "../../services/authService";
+import { useAuth } from "@/hooks/useAuth";
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,19 +45,67 @@ export default function RegisterPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (loading) return;
+
+    const fromLogin = searchParams.get("from") === "login";
+
+    if (user) {
+      router.replace("/inventario");
+      return;
+    }
+
+    if (!fromLogin) {
+      router.replace("/login");
+    }
+  }, [loading, user, searchParams, router]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface text-center">
+        <p className="font-body-md text-body-md text-on-surface">Cargando sesión...</p>
+      </div>
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
     setIsLoading(true);
     setSuccessMessage("");
+    setErrors({});
 
-    // Simulate register API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await authService.register({
+        nombre: name.trim(),
+        email,
+        password,
+      });
+
       setSuccessMessage("¡Cuenta creada con éxito! Redirigiendo al login...");
-    } catch (err) {
-      setErrors({ email: "Error al crear la cuenta. Inténtalo de nuevo." });
+      setName("");
+      setEmail("");
+      setPassword("");
+
+      setTimeout(() => {
+        router.push("/login");
+      }, 1200);
+    } catch (error) {
+      if (error instanceof Response) {
+        const errorData = await error.json().catch(() => null);
+        setErrors({
+          email:
+            errorData?.message ??
+            "Error al crear la cuenta. Inténtalo de nuevo.",
+        });
+      } else {
+        setErrors({ email: "Error de conexión. Inténtalo de nuevo más tarde." });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -206,7 +257,7 @@ export default function RegisterPage() {
               <p className="font-body-md text-body-md text-on-surface-variant">
                 ¿Ya tienes una cuenta?{" "}
                 <Link
-                  href="/"
+                  href="/login"
                   className="font-label-md text-label-md text-primary hover:underline ml-xs font-semibold"
                 >
                   Volver al Login
@@ -217,7 +268,21 @@ export default function RegisterPage() {
         </div>
       </main>
 
-      <Footer text="© 2025 Gestión de Productos Inc. Todos los derechos reservados - Prueba Técnica 1." />
+      <Footer />
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-surface text-center">
+          <p className="font-body-md text-body-md text-on-surface">Cargando registro...</p>
+        </div>
+      }
+    >
+      <RegisterPageContent />
+    </Suspense>
   );
 }

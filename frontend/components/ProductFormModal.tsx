@@ -3,14 +3,15 @@ import { Modal } from "./ui/Modal";
 import { Input } from "./ui/Input";
 import { Combobox } from "./ui/Combobox";
 import { Button } from "./ui/Button";
-
-export interface ProductData {
+//import type { ProductData } from "@/types/product";
+import type { ProductData, ProductStatus } from "@/types/product";
+/*export interface ProductData {
   id?: number;
   name: string;
   description: string;
   price: number;
   status: string;
-}
+}*/
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -58,10 +59,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }));
   };
 
-  const handleStatusChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, status: value }));
-  };
+  const handleStatusChange = (value: ProductStatus) => {
+    setFormData((prev) => ({...prev,status: value,}));};
 
+
+
+    
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
@@ -124,8 +127,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               value={formData.status}
               options={[
                 { label: "Activo", value: "Activo" },
-                { label: "Poco Stock", value: "Poco Stock" },
-                { label: "Agotado", value: "Agotado" },
+                { label: "Inactivo", value: "Inactivo" },
+                //{ label: "Agotado", value: "Agotado" },
               ]}
               onChange={handleStatusChange}
             />

@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,6 @@ namespace ProductosApp.Api.Controllers
 {
     [ApiController]
     [Route("api/productos")]
-    [Authorize] // Todos los endpoints requieren JWT válido
     public class ProductosController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -95,15 +95,15 @@ namespace ProductosApp.Api.Controllers
 
             return Ok(resultado);
         }
-
+        //controla los filtros de busqueda y estado de los productos
         private static IQueryable<Models.Producto> ApplyFilters(
             IQueryable<Models.Producto> query,
             string? search,
             bool? estado)
         {
-            query = estado.HasValue
-                ? query.Where(p => p.Estado == estado.Value)
-                : query.Where(p => p.Estado == true);
+            if (estado.HasValue){
+                query = query.Where(p => p.Estado == estado.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -159,6 +159,7 @@ namespace ProductosApp.Api.Controllers
         // Crea un nuevo producto usando el claim sub del JWT como UsuarioCreacionId.
         // -----------------------------------------------
         [HttpPost]
+        [Authorize(Roles = "Admin,Usuario")]
         [ProducesResponseType(typeof(ProductoResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -169,11 +170,18 @@ namespace ProductosApp.Api.Controllers
                 return BadRequest(ModelState);
             }
 
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var usuarioCreacionId))
             {
                 return Unauthorized(new { message = "Usuario no identificado en el token." });
             }
+
+            var estadoProducto = request.Estado switch
+            {
+                "Inactivo" => false,
+                _ => true
+            };
 
             var producto = new Models.Producto
             {
@@ -181,7 +189,7 @@ namespace ProductosApp.Api.Controllers
                 Nombre = request.Nombre.Trim(),
                 Descripcion = request.Descripcion?.Trim(),
                 Precio = request.Precio,
-                Estado = true,
+                Estado = estadoProducto,
                 FechaCreacion = DateTime.UtcNow,
                 UsuarioCreacionId = usuarioCreacionId
             };
@@ -205,7 +213,7 @@ namespace ProductosApp.Api.Controllers
 
         // -----------------------------------------------
         // PUT /api/productos/{id}
-        // Actualiza nombre, descripción y precio. Solo Admin.
+        // Actualiza nombre, descripción, precio y/o estado. Solo Admin.
         // -----------------------------------------------
         [HttpPut("{id:guid}")]
         [Authorize(Roles = "Admin")]
@@ -221,13 +229,14 @@ namespace ProductosApp.Api.Controllers
                 return BadRequest(ModelState);
             }
 
-            var producto = await _context.Productos.FirstOrDefaultAsync(p => p.Id == id && p.Estado == true);
+            var producto = await _context.Productos.FirstOrDefaultAsync(p => p.Id == id);
             if (producto == null)
             {
                 return NotFound(new { message = "Producto no encontrado." });
             }
 
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var usuarioModificacionId))
             {
                 return Unauthorized(new { message = "Usuario no identificado en el token." });
@@ -236,6 +245,13 @@ namespace ProductosApp.Api.Controllers
             producto.Nombre = request.Nombre.Trim();
             producto.Descripcion = request.Descripcion?.Trim();
             producto.Precio = request.Precio;
+
+            // Actualizar estado si se proporciona
+            if (!string.IsNullOrWhiteSpace(request.Estado))
+            {
+                producto.Estado = request.Estado == "Activo" ? true : false;
+            }
+
             producto.UsuarioModificacionId = usuarioModificacionId;
             producto.FechaModificacion = DateTime.UtcNow;
 
@@ -258,7 +274,7 @@ namespace ProductosApp.Api.Controllers
 
         // -----------------------------------------------
         // DELETE /api/productos/{id}
-        // Borrado lógico: marca Estado = false. Solo Admin.
+        // Borrado lógico: marca Estado = false. Solo Admin. no lo utilizo por momento, pense en usarlo pero uso es estado activo e inactivo en el endpoint PUT (no deberia pero por momento es asi)
         // -----------------------------------------------
         [HttpDelete("{id:guid}")]
         [Authorize(Roles = "Admin")]
@@ -274,7 +290,8 @@ namespace ProductosApp.Api.Controllers
                 return NotFound(new { message = "Producto no encontrado." });
             }
 
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var usuarioModificacionId))
             {
                 return Unauthorized(new { message = "Usuario no identificado en el token." });

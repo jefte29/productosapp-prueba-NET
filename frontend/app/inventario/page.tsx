@@ -1,11 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Combobox } from "@/components/ui/Combobox";
 import { Button } from "@/components/ui/Button";
 import { AvatarMenu } from "@/components/ui/AvatarMenu";
-import { ProductFormModal, ProductData } from "@/components/ProductFormModal";
+import { ProductFormModal} from "@/components/ProductFormModal";
+import { Footer } from "@/components/ui/Footer";
+import type { ProductData } from "@/types/product";
+import { useAuth } from "@/hooks/useAuth";
+import { productService } from "@/services/productService";
+import toast from "react-hot-toast";
+//import { Product } from "@/types/product";
+//import {PagedResult} from "@/types/product";
+//const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5033";
 
 // Datos de prueba (Mock) actualizados
 const INVENTORY_DATA = [
@@ -18,13 +27,132 @@ const INVENTORY_DATA = [
 ];
 
 export default function InventarioPage() {
+  //estados
+  const router = useRouter();
+  //variable para carga de usuario en en el avatarMenu
+  const { user, loading } = useAuth();
+  const initials = user?.email.charAt(0).toUpperCase() ?? "";
+  //const role = user?.role ?? "";
+
+  //=======================================================
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [inventoryData, setInventoryData] = useState<ProductData[]>(INVENTORY_DATA);
   
+  //const [statusFilter, setStatusFilter] = useState("");//esta liena cambiar
+  //const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
+  //const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState("Todos");
+  //const [inventoryData, setInventoryData] = useState<ProductData[]>(INVENTORY_DATA);
+  //const [inventoryData, setInventoryData] = useState<Product[]>([]);
+  //const [inventoryData, setInventoryData] = useState<ProductData[]>([]);
+  const [inventoryData, setInventoryData] = useState<ProductData[]>([]);
+  const [hiddenProductIds, setHiddenProductIds] = useState<Array<string | number>>([]);//para ocultar productos eliminados de la vista temporalmente
+  //=======================================
+  //paginacion y estado de modal para filtrar y mostrar productos
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
+
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductData | null>(null);
+
+  // Protección centralizada: redirige a /login si no hay usuario autenticado.
+  useEffect(() => {
+    if (loading) return; // aún no sabemos si está autenticado
+
+    if (!user) {
+      router.replace("/login");
+    }
+  }, [user, loading, router]);
+
+ //function para cargar productos desde el backend cuando el usuario esté disponible
+ const loadProducts = async () => {
+    try {
+      setLoadingProducts(true);
+      const estado = statusFilter === "Todos" ? undefined : statusFilter === "Activo";//cambiar a true o false según el valor de statusFilter
+      setHiddenProductIds([]);
+      console.log("statusFilter:", statusFilter);//prueba
+      console.log("estado enviado:", estado);
+      const result = await productService.getProducts({
+        search: searchTerm || undefined,
+        estado,
+        page: currentPage,
+        pageSize: pageSize,
+      });
+
+
+      setInventoryData(result.datos);
+      setTotalProducts(result.total);
+      setTotalPages(Math.ceil(result.total / pageSize));
+
+    } catch(error){
+
+      console.error(
+        "Error cargando productos:",
+        error
+      );
+
+    } finally {
+
+      setLoadingProducts(false);
+
+    }
+};
+
+  useEffect(() => {
+    
+    if (!user) return;
+
+    loadProducts();
+
+  }, [user, searchTerm, statusFilter, currentPage, pageSize]); 
+
+  //======================================================================
+  //calculo de paginacion
+  const startItem = totalProducts === 0? 0: (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize,totalProducts);
+  const visibleInventory = inventoryData.filter(
+    (product) => !hiddenProductIds.includes(product.id ?? "")
+  );
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+    setHiddenProductIds([]);
+  };
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+    setHiddenProductIds([]);
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    setCurrentPage(nextPage);
+    setHiddenProductIds([]);
+  };
+
+  const handleGeneratePDF = async () => {//para generar PDF con los filtros aplicados
+    try {
+      toast.loading("Generando PDF...", { id: "pdf-toast" });
+      const estado =
+        statusFilter === "Todos"
+          ? undefined
+          : statusFilter === "Activo";
+      
+      await productService.downloadReport({
+        search: searchTerm || undefined,
+        estado,
+      });
+      toast.success("PDF generado exitosamente", { id: "pdf-toast" });
+    } catch (error) {
+      console.error("Error generando PDF:", error);
+      toast.error("Error al generar el reporte PDF", { id: "pdf-toast" });
+    }
+  };
 
   const openCreateModal = () => {
     setEditingProduct(null);
@@ -41,48 +169,59 @@ export default function InventarioPage() {
     setEditingProduct(null);
   };
 
-  const handleSaveProduct = (data: ProductData) => {
-    if (editingProduct) {
-      // Edit existing
-      setInventoryData((prev) => prev.map((p) => p.id === data.id ? { ...p, ...data } : p));
-    } else {
-      // Create new
-      const newProduct = { ...data, id: Date.now() };
-      setInventoryData((prev) => [newProduct, ...prev]);
+  const handleSaveProduct = async (data: ProductData) => {
+    try {
+      if (editingProduct && data.id) {
+        const updatedProduct = await productService.updateProduct(String(data.id), data);
+        setInventoryData((prev) =>
+          prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
+        );
+        toast.success("Producto actualizado correctamente");
+      } else {
+        const createdProduct = await productService.createProduct(data);
+        setInventoryData((prev) => [createdProduct, ...prev]);
+        toast.success("Producto creado correctamente");
+      }
+
+      handleCloseModal();
+      await loadProducts();
+    } catch (error) {
+      console.error("Error guardando producto:", error);
+      toast.error("No se pudo guardar el producto. Revisa tu sesión o intenta de nuevo.");
     }
-    handleCloseModal();
   };
 
-  const filteredData = inventoryData.filter((item) => {
+  /*const filteredData = inventoryData.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           item.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "" || statusFilter === "Todos" ? true : item.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  });*/
 
   const getStatusStyle = (status: string) => {
     switch (status) {
       case "Activo":
-        return "bg-green-100 text-green-800 border-green-200";
+      return "bg-green-100 text-green-800 border-green-200";
       case "Inactivo":
-        return "bg-red-100 text-yellow-800 border-yellow-200";
+      return "bg-red-100 text-yellow-800 border-yellow-200";
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 p-6 md:p-10 font-sans">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header de la página */}
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans flex flex-col">
+      <main className="flex-1 p-6 md:p-10">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Header de la página */}
         <header className="flex flex-col gap-5">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Inventario</h1>
               <p className="text-slate-500 mt-1">Gestión de Productos e inventario actual</p>
             </div>
-            <AvatarMenu initials="JD" email="johndoe@empresa.com" role="Administrador" onLogout={() => console.log("Logout")} />
+            <AvatarMenu initials={initials} email={user?.email ??""} role={user?.role ??""} onLogout={() => console.log("Logout")} />
           </div>
           <div className="flex flex-col sm:flex-row justify-end items-center gap-3 w-full">
-            <Button variant="secondary" className="w-full sm:w-auto px-6 py-2.5 flex items-center gap-2 justify-center">
+            <Button onClick={handleGeneratePDF} variant="secondary" className="w-full sm:w-auto px-6 py-2.5 flex items-center gap-2 justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
               </svg>
@@ -103,8 +242,8 @@ export default function InventarioPage() {
             <SearchInput 
               placeholder="Buscar por nombre o descripción..." 
               value={searchTerm}
-              onSearch={(v) => setSearchTerm(v)}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onSearch={handleSearch}
+              onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
           <div className="w-full md:w-64">
@@ -115,10 +254,9 @@ export default function InventarioPage() {
               options={[
                 { label: "Todos", value: "Todos" },
                 { label: "Activo", value: "Activo" },
-                //{ label: "Poco Stock", value: "Poco Stock" },
                 { label: "Inactivo", value: "Inactivo" }
               ]}
-              onChange={(v) => setStatusFilter(v)}
+              onChange={handleStatusChange}
             />
           </div>
         </div>
@@ -137,8 +275,8 @@ export default function InventarioPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {filteredData.length > 0 ? (
-                  filteredData.map((product) => (
+                {visibleInventory.length > 0 ? (
+                  visibleInventory.map((product) => (
                     <tr key={product.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-4 px-6 font-semibold text-slate-900">{product.name}</td>
                       <td className="py-4 px-6 text-slate-500 whitespace-normal break-words">{product.description}</td>
@@ -156,7 +294,16 @@ export default function InventarioPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125L16.875 4.5" />
                             </svg>
                           </button>
-                          <button onClick={() => setInventoryData(prev => prev.filter(p => p.id !== product.id))} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Eliminar">
+                          <button
+                            onClick={() => {
+                              const productId = product.id ?? "";
+                              setHiddenProductIds((prev) =>
+                                prev.includes(productId) ? prev : [...prev, productId]
+                              );
+                            }}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Eliminar de la vista"
+                          >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                             </svg>
@@ -179,20 +326,35 @@ export default function InventarioPage() {
           {/* Paginación (Visual) */}
           <div className="bg-slate-50 border-t border-slate-200 p-4 flex items-center justify-between">
             <p className="text-sm text-slate-600">
-              Mostrando <span className="font-semibold text-slate-900">{filteredData.length > 0 ? 1 : 0}</span> a <span className="font-semibold text-slate-900">{filteredData.length}</span> de <span className="font-semibold text-slate-900">{INVENTORY_DATA.length}</span> productos
+             Mostrando{" "}
+                  <span className="font-semibold text-slate-900">{startItem}</span>
+                  {" a "}
+                  <span className="font-semibold text-slate-900">{endItem}</span>
+                  {" de "}
+                  <span className="font-semibold text-slate-900">{totalProducts}</span>
+                  {" productos"}
             </p>
-            <div className="flex gap-1">
-              <button disabled className="p-2 border border-slate-200 rounded text-slate-400 bg-white cursor-not-allowed">
+            <div className="flex gap-2">
+              <button 
+                disabled={currentPage === 1} 
+                onClick={() => handlePageChange(currentPage - 1)} 
+                className={`px-4 py-2 font-medium rounded-lg transition-all duration-200 shadow-sm ${currentPage === 1 ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-md cursor-pointer'}`}
+              >
                 Anterior
               </button>
-              <button disabled className="p-2 border border-slate-200 rounded text-slate-400 bg-white cursor-not-allowed">
+              <button 
+                disabled={currentPage >= totalPages || totalPages === 0} 
+                onClick={() => handlePageChange(currentPage + 1)} 
+                className={`px-4 py-2 font-medium rounded-lg transition-all duration-200 shadow-sm ${currentPage >= totalPages || totalPages === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-md cursor-pointer'}`}
+              >
                 Siguiente
               </button>
             </div>
           </div>
         </div>
 
-      </div>
+        </div>
+      </main>
 
       <ProductFormModal 
         isOpen={isModalOpen}
@@ -200,6 +362,8 @@ export default function InventarioPage() {
         onSubmit={handleSaveProduct}
         initialData={editingProduct}
       />
+
+      <Footer />
     </div>
   );
 }

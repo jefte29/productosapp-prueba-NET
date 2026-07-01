@@ -1,21 +1,21 @@
 import React, { useState, useRef, useEffect } from "react";
 
-export interface ComboboxOption {
-  value: string;
+export interface ComboboxOption<T extends string | number | boolean | null = string>  {
+  value: T;
   label: string;
 }
 
-interface ComboboxProps {
+interface ComboboxProps<T extends string | number | boolean = string>  {
   label: string;
-  options: ComboboxOption[];
-  value?: string;
-  onChange: (value: string) => void;
+  options: ComboboxOption<T>[];
+  value?: T;
+  onChange: (value: T) => void;
   placeholder?: string;
   error?: string;
   className?: string;
 }
 
-export const Combobox: React.FC<ComboboxProps> = ({
+export function Combobox<T extends string | number | boolean= string>({
   label,
   options,
   value,
@@ -23,7 +23,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
   placeholder = "Seleccionar opción...",
   error,
   className = "",
-}) => {
+}:ComboboxProps<T>){
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +84,8 @@ export const Combobox: React.FC<ComboboxProps> = ({
           ) : (
             options.map((option) => (
               <div
-                key={option.value}
+                //key={String{(option.value)}
+                key={String(option.value)}
                 className={`py-2 px-3 cursor-pointer hover:bg-primary/10 transition-colors duration-150 font-body-md text-body-md ${
                   value === option.value ? "bg-primary/5 text-primary font-medium" : "text-on-surface"
                 }`}

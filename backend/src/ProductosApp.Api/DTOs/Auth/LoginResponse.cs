@@ -1,6 +1,6 @@
 namespace ProductosApp.Api.DTOs.Auth
 {
-    public class AuthResponse
+    public class LoginResponse
     {
         public string Token { get; set; } = null!;
         public Guid UserId { get; set; }

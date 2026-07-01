@@ -8,6 +8,7 @@ using ProductosApp.Api.Data;
 using ProductosApp.Api.DTOs.Auth;
 using ProductosApp.Api.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ProductosApp.Api.Controllers
 {
@@ -26,7 +27,7 @@ namespace ProductosApp.Api.Controllers
 
         // POST /api/auth/register
         [HttpPost("register")]
-        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -70,7 +71,7 @@ namespace ProductosApp.Api.Controllers
             // Generar JWT con claims: sub (UserId), email, role.
             var token = GenerarToken(nuevoUsuario, rolUsuario.Nombre);
 
-            var response = new AuthResponse
+            var response = new LoginResponse
             {
                 Token = token,
                 UserId = nuevoUsuario.Id,
@@ -84,7 +85,7 @@ namespace ProductosApp.Api.Controllers
 
         // POST /api/auth/login
         [HttpPost("login")]
-        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -114,7 +115,7 @@ namespace ProductosApp.Api.Controllers
             // Generar JWT con claims: sub (UserId), email, role
             var token = GenerarToken(usuario, usuario.Rol.Nombre);
 
-            var response = new AuthResponse
+            var response = new LoginResponse
             {
                 Token = token,
                 UserId = usuario.Id,
@@ -127,7 +128,7 @@ namespace ProductosApp.Api.Controllers
             {
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.Lax,
+                SameSite = SameSiteMode.None,
                 Expires = DateTimeOffset.UtcNow.AddHours(1),
                 Path = "/"
             });
@@ -142,11 +143,35 @@ namespace ProductosApp.Api.Controllers
             {
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.Lax,
+                SameSite = SameSiteMode.None,
                 Path = "/"
             });
 
             return Ok(new { message = "Sesión cerrada." });
+        }
+
+        // GET /api/auth/me devuelve los claims del usuario autenticado
+        [Authorize]
+        [HttpGet("me")]
+        public IActionResult Me()
+        {
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+            var name = User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (sub == null)
+                return Unauthorized();
+
+            var response = new CurrentUserResponse
+            {
+                UserId = Guid.Parse(sub),
+                Nombre = name ?? "",
+                Email = email ?? "",
+                Role = role ?? ""
+            };
+
+            return Ok(response);
         }
 
         // -----------------------------------------------
@@ -163,6 +188,7 @@ namespace ProductosApp.Api.Controllers
             {
                 new Claim(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, usuario.Email),
+                new Claim(ClaimTypes.Name, usuario.Nombre),
                 new Claim(ClaimTypes.Role, rolNombre),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
