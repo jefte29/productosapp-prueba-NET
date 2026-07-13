@@ -5,8 +5,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ProductosApp.Api.Data;
+using ProductosApp.Api.Options;
+using ProductosApp.Api.Services;
 using QuestPDF;
 using QuestPDF.Infrastructure;
+
+// Cargar variables de entorno desde el archivo .env
+DotNetEnv.Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +20,11 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Evaluation;
 
 // 1. Agregar soporte para Controladores
 builder.Services.AddControllers();
+
+builder.Services.Configure<ProductosApp.Api.Options.GeminiOptions>(builder.Configuration.GetSection("Gemini"));
+builder.Services.AddSingleton<ProductosApp.Api.Services.GeminiService>();
+builder.Services.AddScoped<ProductosApp.Api.Services.ProductoService>();
+builder.Services.AddScoped<ProductosApp.Api.Services.ChatService>();
 
 builder.Services.AddCors(options =>
 {

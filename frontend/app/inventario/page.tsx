@@ -12,6 +12,8 @@ import type { ProductData } from "@/types/product";
 import { useAuth } from "@/hooks/useAuth";
 import { productService } from "@/services/productService";
 import toast from "react-hot-toast";
+import AiButton from "@/components/ai/AiButton";
+import ChatPanel from "@/components/ai/ChatPanel";
 //import { Product } from "@/types/product";
 //import {PagedResult} from "@/types/product";
 //const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5033";
@@ -58,6 +60,9 @@ export default function InventarioPage() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductData | null>(null);
+
+  // Chat Panel State
+  const [isAiChatOpen, setIsAiChatOpen] = useState(false);
 
   // Protección centralizada: redirige a /login si no hay usuario autenticado.
   useEffect(() => {
@@ -360,6 +365,16 @@ export default function InventarioPage() {
         onClose={handleCloseModal}
         onSubmit={handleSaveProduct}
         initialData={editingProduct}
+      />
+
+      {/* Botón flotante para abrir chat */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <AiButton onClick={() => setIsAiChatOpen(true)} />
+      </div>
+
+      <ChatPanel 
+        isOpen={isAiChatOpen}
+        onClose={() => setIsAiChatOpen(false)}
       />
 
       <Footer />
