@@ -39,7 +39,11 @@ namespace ProductosApp.Api.Services
 
                         if (response.Candidates != null && response.Candidates.Count > 0)
                         {
-                            return response.Candidates[0].Content.Parts[0].Text ?? "No se pudo generar una respuesta.";
+                            var firstCandidate = response.Candidates[0];
+                            if (firstCandidate?.Content?.Parts != null && firstCandidate.Content.Parts.Count > 0)
+                            {
+                                return firstCandidate.Content.Parts[0]?.Text ?? "No se pudo generar una respuesta.";
+                            }
                         }
                     }
                     catch (Exception ex) when (ex.Message.Contains("429") || ex.Message.Contains("Too Many Requests"))
