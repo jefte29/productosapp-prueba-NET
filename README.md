@@ -1,4 +1,4 @@
-# Prueba Técnica 1 - Sistema de Gestión de Productos
+# Prueba 1 - Sistema de Gestión de Productos
 
 Aplicación Full Stack desarrollada como prueba técnica.
 
