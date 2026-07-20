@@ -1,6 +1,6 @@
 # Prueba 1 - Sistema de Gestión de Productos
 
-Aplicación Full Stack desarrollada como prueba técnica.
+Aplicación Full Stack desarrollada como prueba en .NET.
 
 ## Tecnologías utilizadas
 
