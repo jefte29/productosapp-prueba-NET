@@ -55,9 +55,9 @@ useEffect(() => {
 
     setUser(null);
 
-  } catch(error) {
+  } catch {
 
-    console.error("Error cerrando sesión", error);
+    console.error("No se pudo completar el cierre de sesión.");
 
   }
 

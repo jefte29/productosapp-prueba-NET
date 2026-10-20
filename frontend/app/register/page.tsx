@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/Button";
 import { Footer } from "../../components/ui/Footer";
 import { Logo } from "../../components/ui/Logo";
 import { authService } from "../../services/authService";
+import { getSafeApiErrorMessage } from "../../services/apiErrorMessage";
 import { useAuth } from "@/hooks/useAuth";
 
 function RegisterPageContent() {
@@ -96,16 +97,13 @@ function RegisterPageContent() {
         router.push("/login");
       }, 1200);
     } catch (error) {
-      if (error instanceof Response) {
-        const errorData = await error.json().catch(() => null);
-        setErrors({
-          email:
-            errorData?.message ??
-            "Error al crear la cuenta. Inténtalo de nuevo.",
-        });
-      } else {
-        setErrors({ email: "Error de conexión. Inténtalo de nuevo más tarde." });
-      }
+      setErrors({
+        email: getSafeApiErrorMessage(
+          error,
+          "register",
+          "Error de conexión. Inténtalo de nuevo más tarde."
+        ),
+      });
     } finally {
       setIsLoading(false);
     }

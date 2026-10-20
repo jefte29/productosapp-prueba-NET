@@ -11,6 +11,7 @@ import { Footer } from "@/components/ui/Footer";
 import type { ProductData } from "@/types/product";
 import { useAuth } from "@/hooks/useAuth";
 import { productService } from "@/services/productService";
+import { getSafeApiErrorMessage } from "@/services/apiErrorMessage";
 import toast from "react-hot-toast";
 import AiButton from "@/components/ai/AiButton";
 import ChatPanel from "@/components/ai/ChatPanel";
@@ -93,12 +94,8 @@ export default function InventarioPage() {
       setTotalProducts(result.total);
       setTotalPages(Math.ceil(result.total / pageSize));
 
-    } catch(error){
-
-      console.error(
-        "Error cargando productos:",
-        error
-      );
+    } catch (error) {
+      toast.error(getSafeApiErrorMessage(error, "request", "No se pudieron cargar los productos."));
 
     } finally {
 
@@ -154,8 +151,7 @@ export default function InventarioPage() {
       });
       toast.success("PDF generado exitosamente", { id: "pdf-toast" });
     } catch (error) {
-      console.error("Error generando PDF:", error);
-      toast.error("Error al generar el reporte PDF", { id: "pdf-toast" });
+      toast.error(getSafeApiErrorMessage(error, "request", "No se pudo generar el reporte PDF."), { id: "pdf-toast" });
     }
   };
 
@@ -191,8 +187,7 @@ export default function InventarioPage() {
       handleCloseModal();
       await loadProducts();
     } catch (error) {
-      console.error("Error guardando producto:", error);
-      toast.error("No se pudo guardar el producto. Revisa tu sesión o intenta de nuevo.");
+      toast.error(getSafeApiErrorMessage(error, "request", "No se pudo guardar el producto."));
     }
   };
 

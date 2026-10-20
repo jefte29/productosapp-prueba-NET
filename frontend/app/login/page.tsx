@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/Button";
 import { Logo } from "../../components/ui/Logo";
 import { Footer } from "../../components/ui/Footer";
 import { authService } from "../../services/authService";
+import { getSafeApiErrorMessage } from "../../services/apiErrorMessage";
 import { useAuth } from "@/hooks/useAuth";
 //const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5033";
 
@@ -74,36 +75,13 @@ export default function LoginPage() {
 
 }
 catch (error) {
-
-  if (error instanceof Response) {
-
-    const errorData = await error.json().catch(() => null);
-
-    if (error.status === 401) {
-      setErrors({
-        email: errorData?.message ?? "Credenciales inválidas.",
-      });
-    }
-    else if (error.status === 400) {
-      setErrors({
-        email: errorData?.message ?? "Solicitud inválida.",
-      });
-    }
-    else {
-      setErrors({
-        email:
-          errorData?.message ??
-          "Error al iniciar sesión. Inténtalo de nuevo.",
-      });
-    }
-
-    return;
-  }
-
   setErrors({
-    email: "Error de conexión. Inténtalo de nuevo más tarde.",
+    email: getSafeApiErrorMessage(
+      error,
+      "login",
+      "Error de conexión. Inténtalo de nuevo más tarde."
+    ),
   });
-
 }
 finally {
 

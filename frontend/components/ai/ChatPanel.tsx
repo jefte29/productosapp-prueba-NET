@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Send } from "lucide-react";
+import { getSafeApiErrorMessage } from "@/services/apiErrorMessage";
 
 interface ChatPanelProps {
   isOpen: boolean;
@@ -40,7 +41,7 @@ export default function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
       });
 
       if (!response.ok) {
-        throw new Error("Error al comunicarse con el servidor");
+        throw response;
       }
 
       const data = await response.json();
@@ -51,8 +52,17 @@ export default function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
 
       setChatHistory([...newHistory, { role: "ai", text: data.reply || "Sin respuesta" }]);
     } catch (error) {
-      console.error("Error de conexión con el Asistente IA");
-      setChatHistory([...newHistory, { role: "ai", text: "Hubo un error de conexión o el asistente IA no está disponible en estos momentos, vuelve más tarde." }]);
+      setChatHistory([
+        ...newHistory,
+        {
+          role: "ai",
+          text: getSafeApiErrorMessage(
+            error,
+            "request",
+            "El asistente IA no está disponible en este momento. Inténtalo más tarde."
+          ),
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
