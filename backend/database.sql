@@ -109,7 +109,6 @@ END;
 -- =====================================================
 DECLARE @AdminRolId UNIQUEIDENTIFIER = 'A1111111-1111-1111-1111-111111111111';
 DECLARE @UsuarioRolId UNIQUEIDENTIFIER = 'B2222222-2222-2222-2222-222222222222';
-DECLARE @SuperAdminId UNIQUEIDENTIFIER = 'C3333333-3333-3333-3333-333333333333';
 
 -- Insertar Roles
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Id] = @AdminRolId)
@@ -120,17 +119,4 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Id] = @UsuarioRolId)
     INSERT INTO [dbo].[Roles] ([Id], [Nombre], [Descripcion]) 
     VALUES (@UsuarioRolId, 'Usuario', 'Rol de Usuario estándar con permisos de lectura y creación de productos.');
 
--- Insertar Usuario super_admin
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Usuarios] WHERE [Email] = 'superadmin@productosapp.com')
-BEGIN
-    INSERT INTO [dbo].[Usuarios] ([Id], [Nombre], [Email], [PasswordHash], [RolId], [Estado], [FechaCreacion])
-    VALUES (
-        @SuperAdminId, 
-        'super_admin', 
-        'superadmin@productosapp.com', 
-        '$2a$11$NJ5yFWjCgVi.lGwJCFvKZOTTF5ArM23Im/1tUYtrtwg8LL2iMuZRW', -- Hash BCrypt de "SuperAdmin2026!"
-        @AdminRolId, 
-        1, -- Activo
-        GETUTCDATE()
-    );
-END;
+-- El administrador inicial se crea desde el backend con valores locales de configuración.

@@ -26,13 +26,15 @@ services:
     container_name: productosapp-api
     restart: unless-stopped
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:5033
-      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=ProductosAppDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
-      Jwt__Key: ${JWT_KEY}
-      Jwt__Issuer: ${JWT_ISSUER}
-      Jwt__Audience: ${JWT_AUDIENCE}
-      Gemini__ApiKey: ${GEMINI_API_KEY}
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=ProductosAppDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True;"
+      Jwt__Key: ${Jwt__Key:?Set Jwt__Key in .env}
+      Jwt__Issuer: ${Jwt__Issuer:?Set Jwt__Issuer in .env}
+      Jwt__Audience: ${Jwt__Audience:?Set Jwt__Audience in .env}
+      Gemini__ApiKey: ${Gemini__ApiKey:-}
+      InitialAdmin__Email: ${InitialAdmin__Email:?Set InitialAdmin__Email in .env}
+      InitialAdmin__Password: ${InitialAdmin__Password:?Set InitialAdmin__Password in .env}
     ports:
       - "${BACKEND_PORT:-5033}:5033"
     depends_on:

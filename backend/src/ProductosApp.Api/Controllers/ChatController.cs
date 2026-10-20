@@ -20,11 +20,6 @@ namespace ProductosApp.Api.Controllers
         [HttpPost("ask")]
         public async Task<ActionResult<AskChatResponse>> Ask([FromBody] AskChatRequest request, CancellationToken cancellationToken)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             var response = await _chatService.AskAsync(request, cancellationToken);
             return Ok(response);
         }

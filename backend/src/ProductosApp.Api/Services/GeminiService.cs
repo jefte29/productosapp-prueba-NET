@@ -120,10 +120,6 @@ namespace ProductosApp.Api.Services
             {
                 return "La solicitud al asistente se canceló por timeout. Intenta de nuevo.";
             }
-            catch (Exception ex)
-            {
-                return $"Error inesperado al procesar tu solicitud: {ex.Message}";
-            }
         }
 
         private List<string> GetModelsToTry()
