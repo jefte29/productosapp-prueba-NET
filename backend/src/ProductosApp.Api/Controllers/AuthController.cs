@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ProductosApp.Api.Data;
 using ProductosApp.Api.DTOs.Auth;
+using ProductosApp.Api.Middleware;
 using ProductosApp.Api.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
@@ -33,16 +34,13 @@ namespace ProductosApp.Api.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             // Verificar que el email no exista (normalizado a minúsculas)
             var emailNormalizado = request.Email.ToLowerInvariant();
             var emailExistente = await _context.Usuarios
                 .AnyAsync(u => u.Email.ToLower() == emailNormalizado);
 
             if (emailExistente)
-                return Conflict(new { message = "El email ya está registrado." });
+                return Conflict(new { message = "La cuenta ya existe, por favor registre otra." });
 
             // Buscar el rol 'Usuario' por defecto
             var rolUsuario = await _context.Roles
@@ -90,9 +88,6 @@ namespace ProductosApp.Api.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             // Buscar el usuario por email (normalizado a minúsculas)
             var emailNormalizado = request.Email.ToLowerInvariant();
             var usuario = await _context.Usuarios
@@ -100,17 +95,26 @@ namespace ProductosApp.Api.Controllers
                 .FirstOrDefaultAsync(u => u.Email.ToLower() == emailNormalizado);
 
             if (usuario is null)
-                return Unauthorized(new { message = "Credenciales inválidas." });
+                return Unauthorized(ApiProblemDetails.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "Credenciales inválidas."));
 
             // Validar que el usuario esté activo
             if (!usuario.Estado)
-                return Unauthorized(new { message = "La cuenta está desactivada." });
+                return Unauthorized(ApiProblemDetails.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "Credenciales inválidas."));
 
             // Validar contraseña con BCrypt
             var passwordValida = BCrypt.Net.BCrypt.Verify(request.Password, usuario.PasswordHash);
 
             if (!passwordValida)
-                return Unauthorized(new { message = "Credenciales inválidas." });
+                return Unauthorized(ApiProblemDetails.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "Credenciales inválidas."));
 
             // Generar JWT con claims: sub (UserId), email, role
             var token = GenerarToken(usuario, usuario.Rol.Nombre);
@@ -161,7 +165,12 @@ namespace ProductosApp.Api.Controllers
             var name = User.FindFirst(ClaimTypes.Name)?.Value;
 
             if (sub == null)
-                return Unauthorized();
+            {
+                return Unauthorized(ApiProblemDetails.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "No se pudo validar la sesión."));
+            }
 
             var response = new CurrentUserResponse
             {

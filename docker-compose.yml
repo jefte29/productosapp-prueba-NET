@@ -4,14 +4,14 @@ services:
     container_name: productosapp-db
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Admin2026}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       MSSQL_PID: "Express"
     ports:
       - "${SQLSERVER_PORT:-1433}:1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD:-Admin2026}\" -C -Q 'SELECT 1' || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD}\" -C -Q 'SELECT 1' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -26,12 +26,15 @@ services:
     container_name: productosapp-api
     restart: unless-stopped
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:5033
-      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=ProductosAppDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-Admin2026};TrustServerCertificate=True;
-      Jwt__Key: ${JWT_KEY:-ClaveSuperSecretaDeMasDe32CaracteresCambiarEnProduccion2026!}
-      Jwt__Issuer: ${JWT_ISSUER:-ProductosApp}
-      Jwt__Audience: ${JWT_AUDIENCE:-ProductosAppClient}
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=ProductosAppDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True;"
+      Jwt__Key: ${Jwt__Key:?Set Jwt__Key in .env}
+      Jwt__Issuer: ${Jwt__Issuer:?Set Jwt__Issuer in .env}
+      Jwt__Audience: ${Jwt__Audience:?Set Jwt__Audience in .env}
+      Gemini__ApiKey: ${Gemini__ApiKey:-}
+      InitialAdmin__Email: ${InitialAdmin__Email:?Set InitialAdmin__Email in .env}
+      InitialAdmin__Password: ${InitialAdmin__Password:?Set InitialAdmin__Password in .env}
     ports:
       - "${BACKEND_PORT:-5033}:5033"
     depends_on:

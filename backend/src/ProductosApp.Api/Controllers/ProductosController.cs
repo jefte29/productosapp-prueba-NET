@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProductosApp.Api.Data;
+using ProductosApp.Api.Middleware;
 using ProductosApp.Api.DTOs.Productos;
 
 namespace ProductosApp.Api.Controllers
@@ -53,6 +54,7 @@ namespace ProductosApp.Api.Controllers
         //   pageSize→ registros por página (por defecto 10, máximo 100)
         // -----------------------------------------------
         [HttpGet]
+        [Authorize]
         [ProducesResponseType(typeof(PagedResult<ProductoResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetProductos(
@@ -127,6 +129,7 @@ namespace ProductosApp.Api.Controllers
         // Busca un producto activo por su Guid. Retorna 404 si no existe o si está inactivo.
         // -----------------------------------------------
         [HttpGet("{id:guid}")]
+        [Authorize]
         [ProducesResponseType(typeof(ProductoResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -148,7 +151,10 @@ namespace ProductosApp.Api.Controllers
 
             if (producto == null)
             {
-                return NotFound(new { message = "Producto no encontrado." });
+                return NotFound(ApiProblemDetails.Create(
+                    HttpContext,
+                    StatusCodes.Status404NotFound,
+                    "No se encontró el recurso solicitado."));
             }
 
             return Ok(producto);
@@ -165,16 +171,14 @@ namespace ProductosApp.Api.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> CreateProducto([FromBody] CreateProductoRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                               ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var usuarioCreacionId))
             {
-                return Unauthorized(new { message = "Usuario no identificado en el token." });
+                return Unauthorized(ApiProblemDetails.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "No se pudo validar la sesión."));
             }
 
             var estadoProducto = request.Estado switch
@@ -224,22 +228,22 @@ namespace ProductosApp.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateProducto(Guid id, [FromBody] UpdateProductoRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             var producto = await _context.Productos.FirstOrDefaultAsync(p => p.Id == id);
             if (producto == null)
             {
-                return NotFound(new { message = "Producto no encontrado." });
+                return NotFound(ApiProblemDetails.Create(
+                    HttpContext,
+                    StatusCodes.Status404NotFound,
+                    "No se encontró el recurso solicitado."));
             }
-
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                              ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var usuarioModificacionId))
             {
-                return Unauthorized(new { message = "Usuario no identificado en el token." });
+                return Unauthorized(ApiProblemDetails.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "No se pudo validar la sesión."));
             }
 
             producto.Nombre = request.Nombre.Trim();
@@ -287,14 +291,20 @@ namespace ProductosApp.Api.Controllers
             var producto = await _context.Productos.FirstOrDefaultAsync(p => p.Id == id && p.Estado == true);
             if (producto == null)
             {
-                return NotFound(new { message = "Producto no encontrado." });
+                return NotFound(ApiProblemDetails.Create(
+                    HttpContext,
+                    StatusCodes.Status404NotFound,
+                    "No se encontró el recurso solicitado."));
             }
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                               ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var usuarioModificacionId))
             {
-                return Unauthorized(new { message = "Usuario no identificado en el token." });
+                return Unauthorized(ApiProblemDetails.Create(
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "No se pudo validar la sesión."));
             }
 
             producto.Estado = false;

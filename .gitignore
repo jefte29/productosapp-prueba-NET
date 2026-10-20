@@ -43,3 +43,9 @@ pnpm-debug.log*
 # =========================
 .DS_Store
 Thumbs.db
+#otros archivos forma de ingorar archivos de texto
+modelo-chat-ia.md
+backend/docs/
+backend/requerimientos_backend.md
+fase-1-seguridad-y-errores.md
+/backend/tests/
