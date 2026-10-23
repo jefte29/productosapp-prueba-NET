@@ -10,6 +10,7 @@ import { Logo } from "../../components/ui/Logo";
 import { Footer } from "../../components/ui/Footer";
 import { authService } from "../../services/authService";
 import { getSafeApiErrorMessage } from "../../services/apiErrorMessage";
+import { markRegistrationNavigation } from "@/services/registrationNavigation";
 import { useAuth } from "@/hooks/useAuth";
 //const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5033";
 
@@ -207,7 +208,8 @@ finally {
             <p className="font-body-sm text-body-sm text-on-surface-variant">
               ¿No tienes cuenta?{" "}
               <Link
-                href="/register?from=login"
+                href="/register"
+                onClick={markRegistrationNavigation}
                 className="font-label-md text-label-md text-primary hover:underline ml-xs font-semibold"
               >
                 Regístrate
