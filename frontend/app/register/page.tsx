@@ -1,8 +1,8 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
@@ -10,6 +10,10 @@ import { Footer } from "../../components/ui/Footer";
 import { Logo } from "../../components/ui/Logo";
 import { authService } from "../../services/authService";
 import { getSafeApiErrorMessage } from "../../services/apiErrorMessage";
+import {
+  clearRegistrationNavigation,
+  consumeRegistrationNavigation,
+} from "@/services/registrationNavigation";
 import { useAuth } from "@/hooks/useAuth";
 
 function RegisterPageContent() {
@@ -24,6 +28,8 @@ function RegisterPageContent() {
   }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [registrationEntryAllowed, setRegistrationEntryAllowed] = useState(false);
+  const registrationEntryChecked = useRef(false);
 
   const validate = () => {
     const newErrors: { name?: string; email?: string; password?: string } = {};
@@ -47,25 +53,32 @@ function RegisterPageContent() {
   };
 
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, loading } = useAuth();
 
   useEffect(() => {
     if (loading) return;
 
-    const fromLogin = searchParams.get("from") === "login";
-
     if (user) {
+      clearRegistrationNavigation();
       router.replace("/inventario");
       return;
     }
 
-    if (!fromLogin) {
-      router.replace("/login");
-    }
-  }, [loading, user, searchParams, router]);
+    if (registrationEntryChecked.current) return;
+    registrationEntryChecked.current = true;
 
-  if (loading) {
+    if (window.location.search.length > 0 || !consumeRegistrationNavigation()) {
+      clearRegistrationNavigation();
+      router.replace("/login");
+      return;
+    }
+
+    // This browser-only check gates the registration form until UI navigation is confirmed.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRegistrationEntryAllowed(true);
+  }, [loading, user, router]);
+
+  if (loading || !registrationEntryAllowed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface text-center">
         <p className="font-body-md text-body-md text-on-surface">Cargando sesión...</p>
