@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useCallback } from "react";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Combobox } from "@/components/ui/Combobox";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +16,6 @@ import AiButton from "@/components/ai/AiButton";
 import ChatPanel from "@/components/ai/ChatPanel";
 //import { Product } from "@/types/product";
 //import {PagedResult} from "@/types/product";
-//const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5033";
 
 // Datos de prueba (Mock) actualizados
 const INVENTORY_DATA = [
@@ -30,10 +28,8 @@ const INVENTORY_DATA = [
 ];
 
 export default function InventarioPage() {
-  //estados
-  const router = useRouter();
   //variable para carga de usuario en en el avatarMenu
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const initials = user?.email.charAt(0).toUpperCase() ?? "";
   //const role = user?.role ?? "";
 
@@ -64,15 +60,33 @@ export default function InventarioPage() {
 
   // Chat Panel State
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+  const [sessionCheckComplete, setSessionCheckComplete] = useState(false);
+
+  const verifySession = useCallback(async () => {
+    await refreshUser();
+    setSessionCheckComplete(true);
+  }, [refreshUser]);
 
   // Protección centralizada: redirige a /login si no hay usuario autenticado.
   useEffect(() => {
-    if (loading) return; // aún no sabemos si está autenticado
+    void verifySession();
 
-    if (!user) {
-      router.replace("/login");
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setSessionCheckComplete(false);
+        void verifySession();
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, [verifySession]);
+
+  useEffect(() => {
+    if (!loading && sessionCheckComplete && !user) {
+      window.location.replace("/login");
     }
-  }, [user, loading, router]);
+  }, [loading, sessionCheckComplete, user]);
 
  //function para cargar productos desde el backend cuando el usuario esté disponible
  const loadProducts = async () => {
@@ -105,12 +119,11 @@ export default function InventarioPage() {
 };
 
   useEffect(() => {
-    
-    if (!user) return;
+    if (!user || loading || !sessionCheckComplete) return;
 
     loadProducts();
 
-  }, [user, searchTerm, statusFilter, currentPage, pageSize]); 
+  }, [user, loading, sessionCheckComplete, searchTerm, statusFilter, currentPage, pageSize]);
 
   //======================================================================
   //calculo de paginacion
@@ -119,6 +132,14 @@ export default function InventarioPage() {
   const visibleInventory = inventoryData.filter(
     (product) => !hiddenProductIds.includes(product.id ?? "")
   );
+
+  if (loading || !sessionCheckComplete || !user) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-surface text-center">
+        <p className="font-body-md text-body-md text-on-surface">Verificando sesión...</p>
+      </main>
+    );
+  }
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);

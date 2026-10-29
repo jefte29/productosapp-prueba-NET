@@ -4,8 +4,6 @@
 import { ProductResponse, ProductData,PagedResult,ProductFilters,} from "@/types/product";
 
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5033";
-
 class ProductService {
 
   async getProducts(
@@ -26,7 +24,7 @@ class ProductService {
         params.append("pageSize", String(filters.pageSize ?? 10));
 
         const response = await fetch(
-        `${API_BASE_URL}/api/productos?${params.toString()}`,
+        `/api/productos?${params.toString()}`,
         {
             method: "GET",
             credentials: "include",
@@ -50,7 +48,7 @@ class ProductService {
   }
 
   async updateProduct(id: string, data: ProductData): Promise<ProductData> {
-    const response = await fetch(`${API_BASE_URL}/api/productos/${id}`, {
+    const response = await fetch(`/api/productos/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -79,7 +77,7 @@ class ProductService {
   }
 
   async createProduct(data: ProductData): Promise<ProductData> {
-    const response = await fetch(`${API_BASE_URL}/api/productos`, {
+    const response = await fetch("/api/productos", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -119,7 +117,7 @@ class ProductService {
     }
 
     const response = await fetch(
-      `${API_BASE_URL}/api/productos/reporte?${params.toString()}`,
+      `/api/productos/reporte?${params.toString()}`,
       {
         method: "GET",
         credentials: "include",

@@ -12,14 +12,12 @@ import { authService } from "../../services/authService";
 import { getSafeApiErrorMessage } from "../../services/apiErrorMessage";
 import { markRegistrationNavigation } from "@/services/registrationNavigation";
 import { useAuth } from "@/hooks/useAuth";
-//const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5033";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   
   const validate = () => {
@@ -60,17 +58,14 @@ export default function LoginPage() {
     if (!validate()) return;
 
     setIsLoading(true);
-    setSuccessMessage("");
     setErrors({});
 
  try {
 
-  const data = await authService.login({
+  await authService.login({
     email,
     password,
   });
-
-  setSuccessMessage(`¡Bienvenido ${data.nombre}! Redirigiendo...`);
 
   window.location.href = "/inventario";
 
@@ -128,12 +123,6 @@ finally {
         <div className="w-full max-w-[480px]">
           <Card className="flex flex-col items-center w-full p-md sm:p-lg md:p-xl">
           <Logo />
-          
-          {successMessage ? (
-            <div className="w-full p-md bg-tertiary-container/10 border border-tertiary/20 text-tertiary rounded-lg text-center font-body-md mb-md animate-fade-in">
-              {successMessage}
-            </div>
-          ) : null}
 
           {/* Login Form */}
           <form className="w-full space-y-lg" onSubmit={handleSubmit}>

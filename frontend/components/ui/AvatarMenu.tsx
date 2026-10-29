@@ -40,7 +40,7 @@ export const AvatarMenu: React.FC<AvatarMenuProps> = ({ initials, email, role, o
   const handleLogout = async () => {
     onLogout?.();
     await logout();
-    router.push("/login");
+    router.replace("/login");
   };
 
   useEffect(() => {

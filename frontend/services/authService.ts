@@ -1,12 +1,10 @@
 import { CurrentUser, LoginRequest, RegisterRequest } from "@/types/auth";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5033";
-
 class AuthService {
 
   async login(data: LoginRequest): Promise<CurrentUser> {
 
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -23,7 +21,7 @@ class AuthService {
   }
 
   async register(data: RegisterRequest): Promise<CurrentUser> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    const response = await fetch("/api/auth/register", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -41,7 +39,7 @@ class AuthService {
 
   async getCurrentUser(): Promise<CurrentUser> {
 
-    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    const response = await fetch("/api/auth/me", {
       method: "GET",
       credentials: "include",
     });
@@ -55,7 +53,7 @@ class AuthService {
 
   async logout(): Promise<void> {
 
-  const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+  const response = await fetch("/api/auth/logout", {
     method: "POST",
     credentials: "include",
   });

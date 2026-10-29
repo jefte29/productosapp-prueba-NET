@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useCallback, useRef } from "react";
 import { CurrentUser } from "@/types/auth";
 import { authService } from "@/services/authService";
 //zimport { createContext, useState, useEffect } from "react";
@@ -26,26 +26,82 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
 
   const [user, setUser] = useState<CurrentUser | null>(null);
-
   const [loading, setLoading] = useState(true);
+  const refreshRequest = useRef<Promise<void> | null>(null);
+  const historyLogoutRequest = useRef<Promise<void> | null>(null);
 
+  const refreshUser = useCallback(async () => {
+    if (refreshRequest.current) return refreshRequest.current;
 
-  async function refreshUser() {
-  try {
-    const currentUser = await authService.getCurrentUser();
+    setLoading(true);
+    refreshRequest.current = authService
+      .getCurrentUser()
+      .then((currentUser) => {
+        setUser(currentUser);
+      })
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+        refreshRequest.current = null;
+      });
 
-    setUser(currentUser);
-  } catch (error) {
+    return refreshRequest.current;
+  }, []);
+
+  const logoutAfterHistoryNavigation = useCallback(async () => {
+    if (historyLogoutRequest.current) return historyLogoutRequest.current;
+
+    setLoading(true);
     setUser(null);
-  } finally {
-    setLoading(false);
-  }
-}
+    historyLogoutRequest.current = authService
+      .logout()
+      .catch(() => {
+        console.error("No se pudo cerrar la sesión al volver a login desde el historial.");
+      })
+      .finally(() => {
+        setLoading(false);
+        historyLogoutRequest.current = null;
+      });
 
+    return historyLogoutRequest.current;
+  }, []);
 
-useEffect(() => {
-  refreshUser();
-}, []);
+  useEffect(() => {
+    const isBackForwardNavigation = () => {
+      const navigationEntry = performance.getEntriesByType(
+        "navigation"
+      )[0] as PerformanceNavigationTiming | undefined;
+      return navigationEntry?.type === "back_forward";
+    };
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      const restoredFromHistory = event.persisted || isBackForwardNavigation();
+      if (restoredFromHistory && window.location.pathname === "/login") {
+        void logoutAfterHistoryNavigation();
+      }
+    };
+
+    const handlePopState = () => {
+      if (window.location.pathname === "/login") {
+        void logoutAfterHistoryNavigation();
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("popstate", handlePopState);
+    if (window.location.pathname === "/login" && isBackForwardNavigation()) {
+      queueMicrotask(() => void logoutAfterHistoryNavigation());
+    } else {
+      queueMicrotask(() => void refreshUser());
+    }
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [logoutAfterHistoryNavigation, refreshUser]);
 
 
   async function logout() {

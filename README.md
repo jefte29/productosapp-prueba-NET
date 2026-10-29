@@ -83,7 +83,6 @@ El proyecto utiliza las siguientes variables:
 - SQLSERVER_PORT
 - BACKEND_PORT
 - FRONTEND_PORT
-- NEXT_PUBLIC_API_BASE_URL
 - Jwt__Key
 - Jwt__Issuer
 - Jwt__Audience
@@ -93,6 +92,10 @@ El proyecto utiliza las siguientes variables:
 - ConnectionStrings__DefaultConnection (para `dotnet run`)
 
 Estas variables pueden modificarse en el archivo `.env`.
+
+## Comunicación entre frontend y API
+
+Las solicitudes del navegador usan rutas relativas `/api/...` del mismo origen. El Route Handler BFF de Next.js reenvía las llamadas a .NET usando `INTERNAL_API_BASE_URL`, sin exponer la dirección de la API al navegador. En local, configura `INTERNAL_API_BASE_URL=http://localhost:5033` en `frontend/.env.local`; con Compose, el frontend usa `http://backend:5033`.
 
 ---
 

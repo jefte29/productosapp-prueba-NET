@@ -27,8 +27,7 @@ export default function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
     setIsLoading(true);
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5033";
-      const response = await fetch(`${API_BASE_URL}/api/chat/ask`, {
+      const response = await fetch("/api/chat/ask", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
